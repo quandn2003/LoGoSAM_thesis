@@ -122,48 +122,100 @@ def eval_detection(pred_list):
     return df
 
 
-def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, score=None, save_path="debug/pred_vs_gt.png"):
+def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, score=None, save_path="debug/pred_vs_gt"):
     """
-    pred: 2d tensor of shape (H, W) where 1 represents foreground and 0 represents background
-    gt: 2d tensor of shape (H, W) where 1 represents foreground and 0 represents background
-    support: 4d tensor of shape (N, C, H, W) where 1 represents foreground and 0 represents background
+    Save separate images for query image, prediction, ground truth, support images and masks.
+    
+    Args:
+        query_image: Query image tensor
+        pred: 2d tensor where 1 represents foreground and 0 represents background
+        gt: 2d tensor where 1 represents foreground and 0 represents background
+        support_images: Support image tensors
+        support_masks: Support mask tensors
+        score: Optional score to add to filename
+        save_path: Base path without extension for saving images
     """
-    if support_images:
+    # Create directory for this case
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    
+    # Process query image
+    if len(query_image.shape) == 3:
+        query_image = query_image.permute(1, 2, 0).clone().detach()
+    query_image = (query_image - query_image.min()) / (query_image.max() - query_image.min())
+    
+    # Save query image with prediction overlay
+    plt.figure(figsize=(10, 10))
+    plt.imshow(query_image.cpu().detach())
+    plt.imshow(pred, alpha=0.5)
+    plt.title("Prediction" + (f" (score: {score})" if score is not None else ""))
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(f"{save_path}/pred.png")
+    plt.close()
+    
+    # Save query image with ground truth overlay
+    plt.figure(figsize=(10, 10))
+    plt.imshow(query_image.cpu().detach())
+    plt.imshow(gt, alpha=0.5)
+    plt.title("Ground Truth")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(f"{save_path}/gt.png")
+    plt.close()
+    
+    # Save original query image
+    plt.figure(figsize=(10, 10))
+    plt.imshow(query_image.cpu().detach())
+    plt.title("Query Image")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(f"{save_path}/query.png")
+    plt.close()
+    
+    # Process and save support images and masks
+    if support_images is not None:
         if isinstance(support_images, list):
             support_images = torch.cat(support_images, dim=0).clone().detach()
         if isinstance(support_masks, list):
             support_masks = torch.cat(support_masks, dim=0).clone().detach()
-        if len(query_image.shape) == 3:
-            query_image = query_image.permute(1, 2, 0).clone().detach()
         if len(support_images.shape) == 4:
             support_images = support_images.clone().detach().permute(0, 2, 3, 1)
-        n_support_rows = math.ceil(support_images.shape[0] / 2)
-    else:
-        n_support_rows = 1
-    fig, ax = plt.subplots(n_support_rows + 1, 2)
-    query_image = (query_image - query_image.min()) / (query_image.max() - query_image.min())
-    ax[0, 0].imshow(query_image.cpu().detach())
-    ax[0, 0].imshow(pred, alpha=0.5)
-    ax[0, 0].set_title("pred")
-    ax[0, 1].imshow(query_image.cpu().detach())
-    ax[0, 1].imshow(gt, alpha=0.5)
-    ax[0, 1].set_title("gt")
-    if support_images is not None:
-        for i in range(1, n_support_rows + 1):
-            support_images[(i - 1) * 2] = (support_images[(i - 1) * 2] - support_images[(i - 1) * 2].min()) / (support_images[(i - 1) * 2].max() - support_images[(i - 1) * 2].min())
-            ax[i, 0].imshow(support_images[(i - 1) * 2].cpu().detach())
-            ax[i, 0].imshow(support_masks[(i - 1) * 2].cpu(), alpha=0.5)
-            ax[i, 0].set_title(f"support")
-            if (i - 1) * 2 + 1 < support_images.shape[0]:
-                support_images[(i - 1) * 2 + 1] = (support_images[(i - 1) * 2 + 1] - support_images[(i - 1) * 2 + 1].min()) / (support_images[(i - 1) * 2 + 1].max() - support_images[(i - 1) * 2 + 1].min())
-                ax[i, 1].imshow(support_images[(i - 1) * 2 + 1].cpu().detach())
-                ax[i, 1].imshow(support_masks[(i - 1) * 2 + 1].cpu(), alpha=0.5)
-                ax[i, 1].set_title(f"support")
-    if score is not None:
-        # plt.title(f"score: {score}") 
-        fig.suptitle(f"sam score: {score}")
-    fig.savefig(save_path)
-    plt.close(fig)
+        
+        for i in range(min(support_images.shape[0], 5)):  # Save up to 5 support images
+            support_img = support_images[i]
+            support_mask = support_masks[i]
+            
+            # Normalize support image
+            support_img = (support_img - support_img.min()) / (support_img.max() - support_img.min())
+            
+            plt.figure(figsize=(10, 10))
+            plt.imshow(support_img.cpu().detach())
+            plt.imshow(support_mask.cpu(), alpha=0.5)
+            plt.title(f"Support Image {i+1} with Mask")
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(f"{save_path}/support_{i+1}_with_mask.png")
+            plt.close()
+            
+            # Save support image only
+            plt.figure(figsize=(10, 10))
+            plt.imshow(support_img.cpu().detach())
+            plt.title(f"Support Image {i+1}")
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(f"{save_path}/support_{i+1}.png")
+            plt.close()
+            
+            # Save support mask only
+            plt.figure(figsize=(10, 10))
+            plt.imshow(support_mask.cpu(), cmap='gray')
+            plt.title(f"Support Mask {i+1}")
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(f"{save_path}/support_mask_{i+1}.png")
+            plt.close()
+
+
 
 
 def get_dice_iou_precision_recall(pred: torch.Tensor, gt: torch.Tensor):
@@ -390,13 +442,16 @@ def main(_run, _config, _log):
                 
             if _config["debug"]:
                 if is_alp_ds:
-                    save_path = f'debug/preds/{case}_{sample_batched["z_id"].item()}_{idx}_{n_try}.png'
-                    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                    save_path = f'debug/preds/{case}_{sample_batched["z_id"].item()}_{idx}_{n_try}'
+                    os.makedirs(save_path, exist_ok=True)
                 elif is_polyp_ds:
-                    save_path = f'debug/preds/{case}_{idx}_{n_try}.png'
-                plot_pred_gt_support(query_images[0,0].cpu(), query_pred.cpu(), query_labels[0].cpu(
-                ), support_images, support_fg_mask, save_path=save_path, score=scores[0])
+                    save_path = f'debug/preds/{case}_{idx}_{n_try}'
+                    os.makedirs(save_path, exist_ok=True)
+                plot_pred_gt_support(query_images[0,0].cpu(), query_pred.cpu(), query_labels[0].cpu(),
+                                    support_images, support_fg_mask, save_path=save_path, score=scores[0])
 
+            # print(query_pred.shape)
+            # print(query_labels[0].shape)
             metrics = get_dice_iou_precision_recall(
                 query_pred, query_labels[0].to(query_pred.device))
             mean_dice.append(metrics["dice"])
@@ -415,10 +470,10 @@ def main(_run, _config, _log):
             mean_iou_cases[case].append(metrics["iou"])
 
             if metrics["dice"] < 0.6 and _config["debug"]:
-                path = f'{_run.observers[0].dir}/bad_preds/case_{case}_idx_{idx}_dice_{metrics["dice"]:.4f}.png'
+                path = f'{_run.observers[0].dir}/bad_preds/case_{case}_idx_{idx}_dice_{metrics["dice"]:.4f}'
                 if _config["debug"]:
-                    path = f'debug/bad_preds/case_{case}_idx_{idx}_dice_{metrics["dice"]:.4f}.png'
-                os.makedirs(os.path.dirname(path), exist_ok=True)
+                    path = f'debug/bad_preds/case_{case}_idx_{idx}_dice_{metrics["dice"]:.4f}'
+                os.makedirs(path, exist_ok=True)
                 print(f"saving bad prediction to {path}")
                 plot_pred_gt_support(query_images[0,0].cpu(), query_pred.cpu(), query_labels[0].cpu(
                     ), support_images, support_fg_mask, save_path=path, score=scores[0])
