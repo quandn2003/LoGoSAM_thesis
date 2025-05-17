@@ -227,6 +227,16 @@ def get_dice_iou_precision_recall(pred: torch.Tensor, gt: torch.Tensor):
         print("gt is all background")
         return {"dice": 0, "precision": 0, "recall": 0}
 
+    # Resize pred to match gt dimensions if they're different
+    if pred.shape != gt.shape:
+        print(f"Resizing prediction from {pred.shape} to match ground truth {gt.shape}")
+        # Use interpolate to resize pred to match gt dimensions
+        pred = torch.nn.functional.interpolate(
+            pred.unsqueeze(0).unsqueeze(0).float(), 
+            size=gt.shape, 
+            mode='nearest'
+        ).squeeze(0).squeeze(0)
+
     tp = (pred * gt).sum()
     fp = (pred * (1 - gt)).sum()
     fn = ((1 - pred) * gt).sum()
