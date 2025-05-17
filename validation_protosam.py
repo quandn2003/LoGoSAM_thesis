@@ -124,13 +124,14 @@ def eval_detection(pred_list):
 
 def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, score=None, save_path="debug/pred_vs_gt"):
     """
-    Save separate images for query image, prediction, ground truth, support images and masks.
+    Save 5 key images: support images, support mask, query, ground truth and prediction.
+    Handles both grayscale and RGB images consistently with the same mask color.
     
     Args:
-        query_image: Query image tensor
+        query_image: Query image tensor (grayscale or RGB)
         pred: 2d tensor where 1 represents foreground and 0 represents background
         gt: 2d tensor where 1 represents foreground and 0 represents background
-        support_images: Support image tensors
+        support_images: Support image tensors (grayscale or RGB)
         support_masks: Support mask tensors
         score: Optional score to add to filename
         save_path: Base path without extension for saving images
@@ -138,81 +139,121 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     # Create directory for this case
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     
-    # Process query image
-    if len(query_image.shape) == 3:
-        query_image = query_image.permute(1, 2, 0).clone().detach()
-    query_image = (query_image - query_image.min()) / (query_image.max() - query_image.min())
+    # Process query image - ensure HxWxC format for visualization
+    query_image = query_image.clone().detach().cpu()
+    if len(query_image.shape) == 3 and query_image.shape[0] <= 3:  # CHW format
+        query_image = query_image.permute(1, 2, 0)
     
-    # Save query image with prediction overlay
-    plt.figure(figsize=(10, 10))
-    plt.imshow(query_image.cpu().detach())
-    plt.imshow(pred, alpha=0.5)
-    plt.title("Prediction" + (f" (score: {score})" if score is not None else ""))
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(f"{save_path}/pred.png")
-    plt.close()
+    # Handle grayscale vs RGB consistently
+    if len(query_image.shape) == 2 or (len(query_image.shape) == 3 and query_image.shape[2] == 1):
+        # For grayscale, use cmap='gray' for visualization
+        is_grayscale = True
+        if len(query_image.shape) == 3:
+            query_image = query_image.squeeze(2)  # Remove channel dimension for grayscale
+    else:
+        is_grayscale = False
     
-    # Save query image with ground truth overlay
-    plt.figure(figsize=(10, 10))
-    plt.imshow(query_image.cpu().detach())
-    plt.imshow(gt, alpha=0.5)
-    plt.title("Ground Truth")
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(f"{save_path}/gt.png")
-    plt.close()
+    # Normalize image for visualization
+    query_image = (query_image - query_image.min()) / (query_image.max() - query_image.min() + 1e-8)
     
-    # Save original query image
+    # Convert pred and gt to numpy for visualization
+    pred_np = pred.cpu().numpy()
+    gt_np = gt.cpu().numpy()
+    
+    # Create colormap for mask overlays - using a consistent red colormap
+    mask_cmap = plt.cm.get_cmap('YlOrRd')  # Yellow-Orange-Red colormap
+
+    # Generate color masks with alpha values
+    pred_rgba = mask_cmap(pred_np)
+    pred_rgba[..., 3] = pred_np * 0.7  # Last channel is alpha - semitransparent where mask=1
+    
+    gt_rgba = mask_cmap(gt_np)
+    gt_rgba[..., 3] = gt_np * 0.7  # Last channel is alpha - semitransparent where mask=1
+    
+    # 1. Save query image (original)
     plt.figure(figsize=(10, 10))
-    plt.imshow(query_image.cpu().detach())
-    plt.title("Query Image")
+    if is_grayscale:
+        plt.imshow(query_image, cmap='gray')
+    else:
+        plt.imshow(query_image)
     plt.axis('off')
-    plt.tight_layout()
     plt.savefig(f"{save_path}/query.png")
     plt.close()
     
-    # Process and save support images and masks
+    # 2. Save query image with prediction overlay
+    plt.figure(figsize=(10, 10))
+    if is_grayscale:
+        plt.imshow(query_image, cmap='gray')
+    else:
+        plt.imshow(query_image)
+    plt.imshow(pred_rgba)
+    plt.axis('off')
+    plt.savefig(f"{save_path}/pred.png")
+    plt.close()
+    
+    # 3. Save query image with ground truth overlay
+    plt.figure(figsize=(10, 10))
+    if is_grayscale:
+        plt.imshow(query_image, cmap='gray')
+    else:
+        plt.imshow(query_image)
+    plt.imshow(gt_rgba)
+    plt.axis('off')
+    plt.savefig(f"{save_path}/gt.png")
+    plt.close()
+    
+    # Process and save support images and masks (just the first one for brevity)
     if support_images is not None:
         if isinstance(support_images, list):
             support_images = torch.cat(support_images, dim=0).clone().detach()
         if isinstance(support_masks, list):
             support_masks = torch.cat(support_masks, dim=0).clone().detach()
-        if len(support_images.shape) == 4:
-            support_images = support_images.clone().detach().permute(0, 2, 3, 1)
         
-        for i in range(min(support_images.shape[0], 5)):  # Save up to 5 support images
-            support_img = support_images[i]
-            support_mask = support_masks[i]
+        # Move to CPU for processing
+        support_images = support_images.cpu()
+        support_masks = support_masks.cpu()
+        
+        # Handle different dimensions of support images
+        if len(support_images.shape) == 4:  # NCHW format
+            # Convert to NHWC for visualization
+            support_images = support_images.permute(0, 2, 3, 1)
+        
+        # Just process the first support image
+        i = 0
+        if support_images.shape[0] > 0:
+            support_img = support_images[i].clone()
+            support_mask = support_masks[i].clone()
+            
+            # Check if grayscale or RGB
+            if support_img.shape[-1] == 1:  # Last dimension is channels
+                support_img = support_img.squeeze(-1)  # Remove channel dimension
+                support_is_gray = True
+            elif support_img.shape[-1] == 3:
+                support_is_gray = False
+            else:  # Assume it's grayscale if not 1 or 3 channels
+                support_is_gray = True
             
             # Normalize support image
-            support_img = (support_img - support_img.min()) / (support_img.max() - support_img.min())
+            support_img = (support_img - support_img.min()) / (support_img.max() - support_img.min() + 1e-8)
             
+            # 4. Save support image only
             plt.figure(figsize=(10, 10))
-            plt.imshow(support_img.cpu().detach())
-            plt.imshow(support_mask.cpu(), alpha=0.5)
-            plt.title(f"Support Image {i+1} with Mask")
+            if support_is_gray:
+                plt.imshow(support_img, cmap='gray')
+            else:
+                plt.imshow(support_img)
             plt.axis('off')
-            plt.tight_layout()
-            plt.savefig(f"{save_path}/support_{i+1}_with_mask.png")
+            plt.savefig(f"{save_path}/support_1.png")
             plt.close()
             
-            # Save support image only
-            plt.figure(figsize=(10, 10))
-            plt.imshow(support_img.cpu().detach())
-            plt.title(f"Support Image {i+1}")
+            # 5. Save support mask only (no overlay on original image)
+            plt.figure(figsize=(10, 10), facecolor='#ffffe0')  # Light yellow background
+            # Create light yellow background
+            plt.fill([0, 1, 1, 0], [0, 0, 1, 1], color='#ffffe0', transform=plt.gca().transAxes)
+            # Plot mask directly with dark red color for visibility
+            plt.imshow(support_mask, cmap='Reds')
             plt.axis('off')
-            plt.tight_layout()
-            plt.savefig(f"{save_path}/support_{i+1}.png")
-            plt.close()
-            
-            # Save support mask only
-            plt.figure(figsize=(10, 10))
-            plt.imshow(support_mask.cpu(), cmap='gray')
-            plt.title(f"Support Mask {i+1}")
-            plt.axis('off')
-            plt.tight_layout()
-            plt.savefig(f"{save_path}/support_mask_{i+1}.png")
+            plt.savefig(f"{save_path}/support_mask_1.png")
             plt.close()
 
 
