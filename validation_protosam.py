@@ -177,7 +177,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     else:
         plt.imshow(query_image)
     plt.axis('off')
-    plt.savefig(f"{save_path}/query.png")
+    # Remove padding/whitespace
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+    plt.savefig(f"{save_path}/query.png", bbox_inches='tight', pad_inches=0)
     plt.close()
     
     # 2. Save query image with prediction overlay
@@ -188,7 +190,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
         plt.imshow(query_image)
     plt.imshow(pred_rgba)
     plt.axis('off')
-    plt.savefig(f"{save_path}/pred.png")
+    # Remove padding/whitespace
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+    plt.savefig(f"{save_path}/pred.png", bbox_inches='tight', pad_inches=0)
     plt.close()
     
     # 3. Save query image with ground truth overlay
@@ -199,7 +203,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
         plt.imshow(query_image)
     plt.imshow(gt_rgba)
     plt.axis('off')
-    plt.savefig(f"{save_path}/gt.png")
+    # Remove padding/whitespace
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+    plt.savefig(f"{save_path}/gt.png", bbox_inches='tight', pad_inches=0)
     plt.close()
     
     # Process and save support images and masks (just the first one for brevity)
@@ -243,17 +249,28 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
             else:
                 plt.imshow(support_img)
             plt.axis('off')
-            plt.savefig(f"{save_path}/support_1.png")
+            # Remove padding/whitespace
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+            plt.savefig(f"{save_path}/support_1.png", bbox_inches='tight', pad_inches=0)
             plt.close()
             
-            # 5. Save support mask only (no overlay on original image)
-            plt.figure(figsize=(10, 10), facecolor='#ffffe0')  # Light yellow background
-            # Create light yellow background
-            plt.fill([0, 1, 1, 0], [0, 0, 1, 1], color='#ffffe0', transform=plt.gca().transAxes)
-            # Plot mask directly with dark red color for visibility
-            plt.imshow(support_mask, cmap='Reds')
+            # 5. Save support mask only (direct mask visualization similar to gt/pred)
+            plt.figure(figsize=(10, 10))
+            
+            # Process support mask exactly like gt/pred (lines 159-171)
+            support_mask_np = support_mask.cpu().numpy()
+            support_mask_rgba = mask_cmap(support_mask_np)
+            support_mask_rgba[..., 3] = support_mask_np * 0.7  # Last channel is alpha - semitransparent where mask=1
+            
+            if is_grayscale:
+                plt.imshow(support_img, cmap='gray')
+            else:
+                plt.imshow(support_img)
+            plt.imshow(support_mask_rgba)
             plt.axis('off')
-            plt.savefig(f"{save_path}/support_mask_1.png")
+            # Remove padding/whitespace
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+            plt.savefig(f"{save_path}/support_mask.png", bbox_inches='tight', pad_inches=0)
             plt.close()
 
 
@@ -402,6 +419,7 @@ def main(_run, _config, _log):
     torch.set_num_threads(1)
 
     _log.info(f'###### Reload model {_config["reload_model_path"]} ######')
+    print(f'###### Reload model {_config["reload_model_path"]} ######')
     model = get_model(_config)
     model = model.to(torch.device("cuda"))
     model.eval()

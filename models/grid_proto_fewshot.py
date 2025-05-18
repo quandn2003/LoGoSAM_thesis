@@ -34,6 +34,7 @@ class FewShotSeg(nn.Module):
         super(FewShotSeg, self).__init__()
         self.image_size = image_size
         self.pretrained_path = pretrained_path
+        print(f'###### Pre-trained path: {self.pretrained_path} ######')
         self.config = cfg or {
             'align': False, 'debug': False}
         self.get_encoder()
