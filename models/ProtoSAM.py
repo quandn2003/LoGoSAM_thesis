@@ -587,7 +587,8 @@ class ProtoSAM(nn.Module):
                 pred = torch.from_numpy(_pred)
             if self.training:
                 return output_logits, [conf]
-            return pred, [conf]
+            # Ensure pred is a float tensor for consistent visualization
+            return pred.float(), [conf]
         
         if query_image.shape[-2:] != self.image_size:
             query_image = F.interpolate(query_image, size=self.image_size, mode='bilinear')

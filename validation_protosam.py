@@ -157,12 +157,20 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     query_image = (query_image - query_image.min()) / (query_image.max() - query_image.min() + 1e-8)
     
     # Convert pred and gt to numpy for visualization
-    pred_np = pred.cpu().numpy()
-    gt_np = gt.cpu().numpy()
+    pred_np = pred.cpu().float().numpy()  # Ensure float before converting to numpy
+    gt_np = gt.cpu().float().numpy()  # Ensure float before converting to numpy
     
-    # Create colormap for mask overlays - using a consistent red colormap
-    mask_cmap = plt.cm.get_cmap('YlOrRd')  # Yellow-Orange-Red colormap
-
+    # Ensure binary masks
+    pred_np = (pred_np > 0).astype(np.float32)
+    gt_np = (gt_np > 0).astype(np.float32)
+    
+    # Set all positive values to 1.0 to ensure consistent red coloring in YlOrRd colormap
+    pred_np[pred_np > 0] = 1.0
+    gt_np[gt_np > 0] = 1.0
+    
+    # Create colormap for mask overlays - using the YlOrRd colormap as requested
+    mask_cmap = plt.cm.get_cmap('YlOrRd')
+    
     # Generate color masks with alpha values
     pred_rgba = mask_cmap(pred_np)
     pred_rgba[..., 3] = pred_np * 0.7  # Last channel is alpha - semitransparent where mask=1
@@ -257,8 +265,11 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
             # 5. Save support mask only (direct mask visualization similar to gt/pred)
             plt.figure(figsize=(10, 10))
             
-            # Process support mask exactly like gt/pred (lines 159-171)
-            support_mask_np = support_mask.cpu().numpy()
+            # Process support mask with same approach
+            support_mask_np = support_mask.cpu().float().numpy()
+            support_mask_np = (support_mask_np > 0).astype(np.float32)
+            support_mask_np[support_mask_np > 0] = 1.0  # Set to 1.0 for consistent coloring
+            
             support_mask_rgba = mask_cmap(support_mask_np)
             support_mask_rgba[..., 3] = support_mask_np * 0.7  # Last channel is alpha - semitransparent where mask=1
             
