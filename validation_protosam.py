@@ -218,7 +218,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     
     # Save prediction mask only (new)
     plt.figure(figsize=(10, 10))
-    plt.imshow(pred_np, cmap='gray', vmin=0, vmax=1)
+    # Invert the mask so 1 (foreground) is white and 0 (background) is black
+    inverted_pred = 1 - pred_np
+    plt.imshow(inverted_pred, cmap='gray', vmin=0, vmax=1)
     plt.axis('off')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
     plt.savefig(f"{save_path}/pred_mask.png", bbox_inches='tight', pad_inches=0)
@@ -226,7 +228,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     
     # Save ground truth mask only (new)
     plt.figure(figsize=(10, 10))
-    plt.imshow(gt_np, cmap='gray', vmin=0, vmax=1)
+    # Invert the mask so 1 (foreground) is white and 0 (background) is black
+    inverted_gt = 1 - gt_np
+    plt.imshow(inverted_gt, cmap='gray', vmin=0, vmax=1)
     plt.axis('off')
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
     plt.savefig(f"{save_path}/gt_mask.png", bbox_inches='tight', pad_inches=0)
@@ -302,7 +306,9 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
             
             # 6. Save support mask only (new)
             plt.figure(figsize=(10, 10))
-            plt.imshow(support_mask_np, cmap='gray', vmin=0, vmax=1)
+            # Invert the mask so 1 (foreground) is white and 0 (background) is black
+            inverted_support_mask = 1 - support_mask_np
+            plt.imshow(inverted_support_mask, cmap='gray', vmin=0, vmax=1)
             plt.axis('off')
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
             plt.savefig(f"{save_path}/support_mask.png", bbox_inches='tight', pad_inches=0)
