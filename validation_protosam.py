@@ -216,6 +216,22 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
     plt.savefig(f"{save_path}/gt.png", bbox_inches='tight', pad_inches=0)
     plt.close()
     
+    # Save prediction mask only (new)
+    plt.figure(figsize=(10, 10))
+    plt.imshow(pred_np, cmap='binary', vmin=0, vmax=1)
+    plt.axis('off')
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+    plt.savefig(f"{save_path}/pred_mask.png", bbox_inches='tight', pad_inches=0)
+    plt.close()
+    
+    # Save ground truth mask only (new)
+    plt.figure(figsize=(10, 10))
+    plt.imshow(gt_np, cmap='binary', vmin=0, vmax=1)
+    plt.axis('off')
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+    plt.savefig(f"{save_path}/gt_mask.png", bbox_inches='tight', pad_inches=0)
+    plt.close()
+    
     # Process and save support images and masks (just the first one for brevity)
     if support_images is not None:
         if isinstance(support_images, list):
@@ -262,7 +278,7 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
             plt.savefig(f"{save_path}/support_1.png", bbox_inches='tight', pad_inches=0)
             plt.close()
             
-            # 5. Save support mask only (direct mask visualization similar to gt/pred)
+            # 5. Save support mask with overlay
             plt.figure(figsize=(10, 10))
             
             # Process support mask with same approach
@@ -280,6 +296,14 @@ def plot_pred_gt_support(query_image, pred, gt, support_images, support_masks, s
             plt.imshow(support_mask_rgba)
             plt.axis('off')
             # Remove padding/whitespace
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+            plt.savefig(f"{save_path}/support_mask_overlay.png", bbox_inches='tight', pad_inches=0)
+            plt.close()
+            
+            # 6. Save support mask only (new)
+            plt.figure(figsize=(10, 10))
+            plt.imshow(support_mask_np, cmap='binary', vmin=0, vmax=1)
+            plt.axis('off')
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
             plt.savefig(f"{save_path}/support_mask.png", bbox_inches='tight', pad_inches=0)
             plt.close()
